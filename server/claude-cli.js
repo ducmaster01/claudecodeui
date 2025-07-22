@@ -231,12 +231,26 @@ async function spawnClaude(command, options = {}, ws) {
     console.log('🔍 Full command args:', JSON.stringify(args, null, 2));
     console.log('🔍 Final Claude command will be: claude ' + args.join(' '));
     
-    const claudeProcess = spawnFunction('claude', args, {
+    const spawnOptions = {
       cwd: workingDir,
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env }, // Inherit all environment variables
       shell: process.platform === 'win32' // Use shell on Windows for .cmd files
-    });
+    };
+    
+    let finalArgs = args;
+    if (process.platform === 'win32' && spawnOptions.shell) {
+      finalArgs = args.map(arg => {
+        if (arg.includes(' ') && !arg.startsWith('"') && !arg.endsWith('"')) {
+          const escapedArg = arg.replace(/"/g, '\\"');
+          return `"${escapedArg}"`;
+        }
+        return arg;
+      });
+      console.log('🔍 Windows shell mode - escaped args:', JSON.stringify(finalArgs, null, 2));
+    }
+    
+    const claudeProcess = spawnFunction('claude', finalArgs, spawnOptions);
     
     // Attach temp file info to process for cleanup later
     claudeProcess.tempImagePaths = tempImagePaths;
